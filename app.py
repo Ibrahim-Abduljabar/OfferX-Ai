@@ -4,20 +4,21 @@ import streamlit as st
 from dotenv import load_dotenv
 
 load_dotenv()
+
 GROQ_API_KEY = os.getenv("API_kkk")
 
-st.set_page_config(page_title="OfferX AI", page_icon="💼", layout="centered")
+st.set_page_config(page_title="OfferX AI 💼", layout="centered")
 st.title("💼 OfferX AI")
-st.write("ذكاء اصطناعي لصناعة أكثر من عرض وظيفي للـ HR.")
+st.write("منصة لإنشاء أكثر من عرض وظيفي للـ HR باستخدام الذكاء الاصطناعي.")
 
 if not GROQ_API_KEY:
-    st.error("🚨 حط GROQ_API_KEY في Secrets أو .env")
+    st.error("🚨 لم يتم العثور على المفتاح API_kkk في Secrets.")
     st.stop()
 
 
 def generate_offer(data):
     prompt = f"""
-اكتب عرض وظيفي رسمي واحترافي باللغة العربية للموظف التالي:
+اكتب عرض وظيفي رسمي واحترافي للموظف التالي:
 
 الاسم: {data['name']}
 المسمى الوظيفي: {data['title']}
@@ -34,30 +35,36 @@ def generate_offer(data):
         headers={"Authorization": f"Bearer {GROQ_API_KEY}"},
         json={
             "model": "llama3-70b-8192",
-            "messages": [{"role": "user", "content": prompt}],
-        },
+            "messages": [{"role": "user", "content": prompt}]
+        }
     )
 
-    return resp.json()["choices"][0]["message"]["content"]
+    data_json = resp.json()
+
+    if "choices" not in data_json:
+        return f"❌ خطأ في الاتصال بالـ API:\n{data_json}"
+
+    return data_json["choices"][0]["message"]["content"]
 
 
 if "offers" not in st.session_state:
     st.session_state.offers = []
 
 with st.form("offer_form", clear_on_submit=True):
-    st.subheader("إنشاء عرض وظيفي جديد")
+    st.subheader("✨ إنشاء عرض وظيفي جديد")
+
     name = st.text_input("اسم الموظف")
     title = st.text_input("المسمى الوظيفي")
-    salary = st.text_input("الراتب المقترح")
+    salary = st.text_input("الراتب")
     start_date = st.text_input("تاريخ البدء")
     benefits = st.text_area("المزايا")
     conditions = st.text_area("الشروط")
 
-    submitted = st.form_submit_button("✨ أنشئ العرض")
+    submitted = st.form_submit_button("إنشاء العرض")
 
     if submitted:
         if not all([name, title, salary, start_date]):
-            st.warning("عبّ البيانات الأساسية أول.")
+            st.warning("⚠️ عبّ البيانات الأساسية أول.")
         else:
             data = {
                 "name": name,
@@ -65,14 +72,18 @@ with st.form("offer_form", clear_on_submit=True):
                 "salary": salary,
                 "start_date": start_date,
                 "benefits": benefits,
-                "conditions": conditions,
+                "conditions": conditions
             }
-            with st.spinner("جاري إنشاء العرض..."):
+
+            with st.spinner("⏳ جاري إنشاء العرض..."):
                 offer_text = generate_offer(data)
+
             st.session_state.offers.append(
                 {"data": data, "text": offer_text}
             )
+
             st.success("✅ تم إنشاء العرض وإضافته للقائمة.")
+
 
 st.divider()
 st.subheader("📂 كل العروض الوظيفية")
@@ -82,7 +93,7 @@ if not st.session_state.offers:
 else:
     for i, offer in enumerate(st.session_state.offers, 1):
         with st.expander(f"Offer #{i} - {offer['data']['name']} / {offer['data']['title']}"):
-            st.markdown("**البيانات الأساسية:**")
+            st.markdown("### 📌 البيانات الأساسية")
             st.write(f"- الاسم: {offer['data']['name']}")
             st.write(f"- المسمى الوظيفي: {offer['data']['title']}")
             st.write(f"- الراتب: {offer['data']['salary']}")
@@ -91,5 +102,5 @@ else:
             st.write(f"- الشروط: {offer['data']['conditions']}")
 
             st.markdown("---")
-            st.markdown("**نص العرض الوظيفي:**")
+            st.markdown("### 📝 نص العرض الوظيفي")
             st.write(offer["text"])
